@@ -1,9 +1,8 @@
-import streamlit as st
+ import streamlit as st
 import fitz
 import google.generativeai as genai
 import streamlit.components.v1 as components
 
-# 1. SETUP ESTETICO
 st.set_page_config(page_title="LEXA EUROPE AI", page_icon="⚖️", layout="wide")
 
 st.markdown("""
@@ -13,14 +12,11 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 2. SIDEBAR
 with st.sidebar:
     st.title("⚖️ LEXA PANEL")
     api_key = st.text_input("Inserisci Gemini API Key", type="password")
     jurisdiction = st.selectbox("Seleziona Giurisdizione", ["Italia", "Unione Europea", "International"])
-    st.info("LEXA analizzerà il contratto secondo le leggi della nazione scelta.")
 
-# 3. INTERFACCIA
 st.title("⚖️ LEXA EUROPE: Intelligenza Legale")
 col_in, col_out = st.columns([1, 1], gap="large")
 
@@ -39,37 +35,39 @@ with col_in:
         if testo_manuale:
             testo_da_analizzare = testo_manuale
 
-# 4. ANALISI CON FALLBACK (EVITA ERRORE 404)
 with col_out:
     st.subheader("📊 Report LEXA")
     if st.button("🚀 AVVIA ANALISI PROFESSIONALE"):
         if not api_key or not testo_da_analizzare:
             st.error("Inserisci la chiave API e il testo!")
         else:
+            # .strip() elimina spazi invisibili prima o dopo la chiave
+            clean_key = api_key.strip()
             try:
-                genai.configure(api_key=api_key)
-                # Prova modelli diversi in sequenza
+                genai.configure(api_key=clean_key)
                 modelli = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro']
                 res_text = ""
+                errore_reale = ""
                 
                 for m in modelli:
                     try:
                         model = genai.GenerativeModel(m)
-                        prompt = f"Sei un avvocato esperto in {jurisdiction}. Analizza questo contratto per rischi IP (Art 12-bis se Italia), recesso e penali: \n\n {testo_da_analizzare[:20000]}"
+                        prompt = f"Sei un avvocato esperto in {jurisdiction}. Analizza questo contratto per rischi IP e clausole critiche: \n\n {testo_da_analizzare}"
                         response = model.generate_content(prompt)
                         res_text = response.text
                         break
-                    except: continue
+                    except Exception as e:
+                        errore_reale = str(e)
+                        continue
                 
                 if res_text:
                     st.markdown(f"<div class='report-card'>{res_text}</div>", unsafe_allow_html=True)
-                    
-                    # TASTO AUDIO (Text-to-Speech)
                     clean_text = res_text.replace("'", " ").replace("\n", " ").replace("`", "")
                     tts = f"""<script>function speak() {{ window.speechSynthesis.cancel(); var m = new SpeechSynthesisUtterance(); m.text='{clean_text[:3000]}'; m.lang='it-IT'; window.speechSynthesis.speak(m); }}</script>
                     <button onclick="speak()" style="width:100%;height:50px;background:#FFD700;border-radius:10px;font-weight:bold;cursor:pointer;border:none;">🔊 ASCOLTA L'ANALISI</button>"""
                     components.html(tts, height=70)
                 else:
-                    st.error("Errore di connessione AI. Controlla la tua API Key.")
+                    # MOSTRA L'ERRORE VERO DI GOOGLE
+                    st.error(f"ERRORE DI GOOGLE: {errore_reale}")
             except Exception as e:
-                st.error(f"Errore: {e}")
+                st.error(f"Errore Generale: {e}")
