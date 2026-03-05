@@ -1,4 +1,4 @@
- import streamlit as st
+import streamlit as st
 import fitz
 import google.generativeai as genai
 import streamlit.components.v1 as components
@@ -39,35 +39,27 @@ with col_out:
     st.subheader("📊 Report LEXA")
     if st.button("🚀 AVVIA ANALISI PROFESSIONALE"):
         if not api_key or not testo_da_analizzare:
-            st.error("Inserisci la chiave API e il testo!")
+            st.error("Manca la chiave API o il testo!")
         else:
-            # .strip() elimina spazi invisibili prima o dopo la chiave
             clean_key = api_key.strip()
             try:
                 genai.configure(api_key=clean_key)
-                modelli = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro']
-                res_text = ""
-                errore_reale = ""
-                
-                for m in modelli:
+                # Fallback modelli
+                for m_name in ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro']:
                     try:
-                        model = genai.GenerativeModel(m)
-                        prompt = f"Sei un avvocato esperto in {jurisdiction}. Analizza questo contratto per rischi IP e clausole critiche: \n\n {testo_da_analizzare}"
+                        model = genai.GenerativeModel(m_name)
+                        prompt = f"Sei un avvocato in {jurisdiction}. Analizza questo contratto per rischi IP e clausole critiche: \n\n {testo_da_analizzare}"
                         response = model.generate_content(prompt)
-                        res_text = response.text
-                        break
-                    except Exception as e:
-                        errore_reale = str(e)
-                        continue
-                
-                if res_text:
-                    st.markdown(f"<div class='report-card'>{res_text}</div>", unsafe_allow_html=True)
-                    clean_text = res_text.replace("'", " ").replace("\n", " ").replace("`", "")
-                    tts = f"""<script>function speak() {{ window.speechSynthesis.cancel(); var m = new SpeechSynthesisUtterance(); m.text='{clean_text[:3000]}'; m.lang='it-IT'; window.speechSynthesis.speak(m); }}</script>
-                    <button onclick="speak()" style="width:100%;height:50px;background:#FFD700;border-radius:10px;font-weight:bold;cursor:pointer;border:none;">🔊 ASCOLTA L'ANALISI</button>"""
-                    components.html(tts, height=70)
-                else:
-                    # MOSTRA L'ERRORE VERO DI GOOGLE
-                    st.error(f"ERRORE DI GOOGLE: {errore_reale}")
+                        if response.text:
+                            st.markdown(f"<div class='report-card'>{response.text}</div>", unsafe_allow_html=True)
+                            # Audio
+                            clean_t = response.text.replace("'", " ").replace("\n", " ").replace("`", "")
+                            tts = f"""<script>function speak() {{ window.speechSynthesis.cancel(); var m = new SpeechSynthesisUtterance(); m.text='{clean_t[:3000]}'; m.lang='it-IT'; window.speechSynthesis.speak(m); }}</script>
+                            <button onclick="speak()" style="width:100%;height:50px;background:#FFD700;border-radius:10px;font-weight:bold;cursor:pointer;border:none;">🔊 ASCOLTA ANALISI</button>"""
+                            components.html(tts, height=70)
+                            break
+                    except: continue
             except Exception as e:
-                st.error(f"Errore Generale: {e}")
+                st.error(f"Errore: {e}")
+
+st.caption("LEXA EUROPE v2.3")
